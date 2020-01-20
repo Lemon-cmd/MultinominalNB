@@ -1,2 +1,2 @@
-g++ NaiveBayes.cpp -o test
-./test
+g++ NaiveBayes.cpp -o NB
+./NB
