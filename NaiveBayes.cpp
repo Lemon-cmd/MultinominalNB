@@ -29,6 +29,7 @@ class NaiveB
         };
 
         vector <vector<string> > data; // vector that holds the dataset
+        vector <vector<string> > test_data;
 
         map <string, metadata*> Features; // X
         map <string, metadata*> Y;  // Y or outcomes
@@ -78,6 +79,37 @@ class NaiveB
                     Y[row[row.size()-1]]->overall_freq += 1;
                 }
             }
+        }
+
+        void split_data(vector <int> &ignores, vector <vector<string> > &target)
+        {
+            vector <vector <string> > new_data;
+
+            for (auto &row : target)
+            {
+                vector <string> entry;
+                bool question = false;
+                for (int col = 0; col < row.size()-1; col ++)
+                {
+                    if (find(ignores.begin(), ignores.end(), col) == ignores.end())
+                    {
+                        entry.push_back(row[col]);
+                    }
+                    if (row[col] == "?")
+                    {
+                        question = true;
+                    }
+                }
+                if (question == false)
+                    new_data.push_back(entry);
+            }
+
+            for (int row = 0; row < target.size(); row ++)
+            {
+                new_data[row].push_back(target[row][target[row].size()-1]);
+            }
+
+            target = new_data;
         }
 
         void updateGProb()
@@ -147,12 +179,43 @@ class NaiveB
             } 
         }
 
-        void insert(const vector<string> &item)
-        {   
-            data.push_back(item);
+        const string predictY(vector<string> &inputs)
+        {
+            // Prediction Method
+            for (auto &y : Y)
+            {   
+                double equation = 0.0;
+                //equation P(X(i) | Y) * P(Y)
+                for (auto &inp : inputs)
+                {
+                    if (equation ==  0.0)
+                    {
+                        equation = connections[inp][y.first]->y_prob;
+                    }
+                    else
+                    {
+                        equation *= connections[inp][y.first]->y_prob; 
+                    }
+                }
+                //set  y state probability
+                y.second->stateP = double(equation); 
+            }
+            
+            //get best Y
+            string best_y;
+            double best_yp = 0.0;
+            for (auto &y : Y)
+            {
+                if (best_yp < y.second->stateP)
+                {
+                    best_y = y.first; best_yp = y.second->stateP;
+                }
+            }
+
+            return best_y;    
         }
 
-        void load(string filename)
+        void load(const string filename, vector <vector<string> > &holder)
         {
             // load file onto the vector data
             ifstream file(filename);
@@ -160,24 +223,36 @@ class NaiveB
 
             while (getline(file, line))
             {
-                vector<string> item;
-                istringstream input(line);
                 //split the line by space
-                for (string temp; input >> temp;)
-                    //append each string onto the current vector
-                    item.push_back(temp);
-                
-                //insert the row onto the data
-                insert(item);
+                if (!line.empty())
+                {
+                    
+                    for (int c = 0; c < line.size(); c ++)
+                    {
+                        if (line[c] == ',' || line[c] == '.') line[c] = ' ';
+                    }
+                    
+                    vector<string> item;
+                    istringstream input(line);
+                    for (string s; input >> s;)
+                    {
+                        item.push_back(s);
+                    }
+                    //insert the row onto the data
+                    holder.push_back(item);
+                }
             }
         }   
 
     public:     
-        NaiveB(string filename) 
+        NaiveB(string traindata, string testdata, vector <int> &ignores) 
         {
-            load(filename);
+            load(traindata, data); 
+            load(testdata, test_data);
             data_size = data.size();
-            getXY(); updateGProb(); updateC();
+            split_data(ignores, data); 
+            split_data(ignores, test_data);
+            getXY(); updateGProb(); updateC(); 
         }
 
         void displayData()
@@ -192,7 +267,25 @@ class NaiveB
                 cout << "\n";
             }
         }
+    
+        void predictTest()
+        {
+            int trues = 0;
 
+            for (auto &row : test_data)
+            {
+                string current = predictY(row);
+
+                if (current == row[row.size()-1])
+                {
+                    trues += 1;
+                }
+            }
+
+            double accuracy = double(trues) / double(test_data.size());
+            cout << "Accuracy of Model: " << accuracy << endl;
+
+        }
         void displayTable()
         {
             /* A method for displaying the three maps; Features, Y, connections */
@@ -218,31 +311,20 @@ class NaiveB
             }
 
         }
-
-        void predict(string outlook, string temperature, string humidity, string wind)
-        {
-            // Prediction Method
-            for (auto &y : Y)
-            {
-                //Top equation P(X(i) | Y) * P(Y)
-                double top_equation = connections[outlook][y.first]->y_prob * connections[temperature][y.first]->y_prob
-                                    * connections[humidity][y.first]->y_prob * connections[wind][y.first]->y_prob 
-                                    * y.second->overall_prob;
-                
-                //P(X(i) | Y) * P(Y) / (P(X(i)))
-                y.second->stateP = double(top_equation); 
-
-                cout << "Predicting Y: " << y.first << " based on given input; probability of Y: " << y.second->stateP << endl;                
-            }
-
-        }
-     
 };
 
 int main()
 {
-    NaiveB classifier = NaiveB("dataset.txt");
-    //classifier.displayTable();
-    classifier.predict("Sunny", "Hot", "Normal", "False");
-
+    vector <int> ignores;
+    /*
+    ignores.push_back(2);
+    ignores.push_back(4);
+    ignores.push_back(10);
+    ignores.push_back(11);
+    ignores.push_back(12);
+    */
+    NaiveB classifier = NaiveB("dataset.txt", "dataset.txt", ignores);
+    //classifier.predictTest();
+   
+    
 }
