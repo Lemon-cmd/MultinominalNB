@@ -5,9 +5,12 @@
 For using a different dataset, please consider using the **last column in the data as the test feature or Y**. If not, then you will have to change up the code.       
 
 # Dataset Tips      
-It is up to you to clean your data. There are many ways people separate different columns in their dataset. Please simply update the load method to do the splitting based on your **targeted dataset** 
+It is up to you to clean your data. There are many ways people separate different columns in their dataset. Please simply update the load method to do the splitting based on your **targeted dataset**.  
+   
+In this example, I am using the adult data set given by UCI https://archive.ics.uci.edu/ml/datasets/Adult    
+It has about 40k entries and 15 features. I removed features that contained continuous values. You can see what columns I removed in the removedXs vector in main.    
 
-# Please don't use features with only 1 and 0! #             
+# Please don't use features with only 1 and 0 or continous values! #             
   - This is not a multinominal NB classifier. It will be up on a different repository!     
   - This is not a Guassian NB classifier. It will be up on a different repository !      
         
