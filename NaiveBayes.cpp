@@ -5,6 +5,7 @@
 #include <vector>
 #include <math.h>
 #include <map>
+#include <algorithm>
 
 using namespace std;
 
@@ -30,6 +31,7 @@ class NaiveB
 
         vector <vector<string> > data; // vector that holds the dataset
         vector <vector<string> > test_data;
+        vector <int> ignored_col;
 
         map <string, metadata*> Features; // X
         map <string, metadata*> Y;  // Y or outcomes
@@ -188,13 +190,16 @@ class NaiveB
                 //equation P(X(i) | Y) * P(Y)
                 for (auto &inp : inputs)
                 {
-                    if (equation ==  0.0)
+                    if (connections[inp].find(y.first) != connections[inp].end())
                     {
-                        equation = connections[inp][y.first]->y_prob;
-                    }
-                    else
-                    {
-                        equation *= connections[inp][y.first]->y_prob; 
+                        if (equation ==  0.0)
+                        {
+                            equation = connections[inp][y.first]->y_prob;
+                        }
+                        else
+                        {
+                            equation *= connections[inp][y.first]->y_prob; 
+                        }
                     }
                 }
                 //set  y state probability
@@ -215,8 +220,9 @@ class NaiveB
             return best_y;    
         }
 
-        void load(const string filename, vector <vector<string> > &holder)
+        void load(const string filename, vector <vector <string> > &target)
         {
+      
             // load file onto the vector data
             ifstream file(filename);
             string line;
@@ -239,26 +245,37 @@ class NaiveB
                         item.push_back(s);
                     }
                     //insert the row onto the data
-                    holder.push_back(item);
+                    target.push_back(item);
                 }
             }
+
         }   
 
     public:     
-        NaiveB(string traindata, string testdata, vector <int> &ignores) 
+        NaiveB(vector <int> &ignores) 
         {
-            load(traindata, data); 
-            load(testdata, test_data);
+            ignored_col = ignores;
+
             data_size = data.size();
-            split_data(ignores, data); 
-            split_data(ignores, test_data);
-            getXY(); updateGProb(); updateC(); 
         }
+
+        void loadTrainD(string traindata)
+        {
+            load(traindata, data);
+            split_data(ignored_col, data);
+        }
+
+        void loadTestD(string testdata)
+        {
+            load(testdata, test_data);
+            split_data(ignored_col, test_data);
+        }
+
 
         void displayData()
         {
             //display the data vector
-            for (auto &entry: data)
+            for (auto &entry: test_data)
             {
                 for (auto &item : entry)
                 {
@@ -270,12 +287,12 @@ class NaiveB
     
         void predictTest()
         {
+            getXY(); updateGProb(); updateC(); 
             int trues = 0;
-
+            
             for (auto &row : test_data)
             {
                 string current = predictY(row);
-
                 if (current == row[row.size()-1])
                 {
                     trues += 1;
@@ -316,15 +333,19 @@ class NaiveB
 int main()
 {
     vector <int> ignores;
-    /*
+    
     ignores.push_back(2);
     ignores.push_back(4);
     ignores.push_back(10);
     ignores.push_back(11);
     ignores.push_back(12);
-    */
-    NaiveB classifier = NaiveB("dataset.txt", "dataset.txt", ignores);
-    //classifier.predictTest();
+    
+    NaiveB classifier = NaiveB(ignores);
+
+    classifier.loadTrainD("adult.data");
+    classifier.loadTestD("adult.test");
+
+    classifier.predictTest();
    
     
 }
