@@ -12,7 +12,7 @@ using namespace std;
 class NaiveB
 {
     private:
-        //metadata for each state
+        //metadata for each state X/Y
         struct metadata
         {
             int column = NULL;
@@ -26,39 +26,43 @@ class NaiveB
         {
             int y_freq = 0;
             double y_prob = 0;
-            double likelihood = 0;
         };
 
-        vector <vector<string> > data; // vector that holds the dataset
-        vector <vector<string> > test_data;
-        vector <int> ignored_col;
+        vector <vector<string> > train_data; // train data set
+        vector <vector<string> > test_data;  // test data set
+        vector <int> ignoredXs;             // vector that holds target column to be removed
 
         map <string, metadata*> Features; // X
         map <string, metadata*> Y;  // Y or outcomes
 
         map <string, map<string, likelihood*> > connections;    //use to store X(i) -> Y(i) connections
       
-        int data_size;  // variable that holds the size of dataset
-    
-        void getXY()
+        int train_size;     //size of train set
+        int test_size;      //size of test set
+
+        void updateXY()
         {
             /* Method for Putting in features and outcomes into Features and Y Maps */
 
-            for (auto &row : data)
+            for (auto &row : train_data)
             {
-                for (int col = 0; col < row.size()-1; col ++)
+                int entry_size = row.size();        // current entry size; save performance on calling the size() method
+                for (int col = 0; col < entry_size - 1; col ++)
                 {
                     // if the feature is not in the map
                     if (Features.find(row[col]) == Features.end())
                     {
+                        //set metadata and update overall freq of the feature
                         metadata* new_entryX = new metadata;
+                        //set key (X) to connections map and also create its edge
                         map<string, likelihood*> edge;
 
                         new_entryX->overall_freq += 1;
-                        new_entryX->column = col;
+                        new_entryX->column = col;           //save the column value of the feature
  
-                        Features[row[col]] = new_entryX;
-                        connections[row[col]] = edge;
+                        Features[row[col]] = new_entryX;    //set metadata
+                        connections[row[col]] = edge;       //set edge to the current X
+
                         cout << "New X: " << row[col] << endl;
                     }
                     // if the feature is already in the map, update its count
@@ -68,80 +72,102 @@ class NaiveB
                     }
                 }
                 // if the outcome is not in the map
-                if (Y.find(row[row.size()-1]) == Y.end())
+                if (Y.find(row[entry_size - 1]) == Y.end())
                 {
+
+                    // set Y metadata and update its freq
                     metadata* new_entryY = new metadata;
                     new_entryY->overall_freq += 1;
-                    Y[row[row.size()-1]] = new_entryY;
-                    cout << "New Y: " << row[row.size()-1] << endl;
+                    Y[row[entry_size - 1]] = new_entryY;
+
+                    cout << "New Y: " << row[entry_size - 1] << endl;
                 }
                 // if outcome exists, update its count
                 else
                 {
-                    Y[row[row.size()-1]]->overall_freq += 1;
+                    Y[row[entry_size - 1]]->overall_freq += 1;
                 }
             }
         }
 
-        void split_data(vector <int> &ignores, vector <vector<string> > &target)
+        void clean(vector <vector<string> > &target)
         {
+            //Method for cleaning unusuable features
             vector <vector <string> > new_data;
-
+            
+            //loop through the target vector
             for (auto &row : target)
             {
-                vector <string> entry;
-                bool question = false;
-                for (int col = 0; col < row.size()-1; col ++)
+                vector <string> entry;          //vector for new row
+                bool unusuable = false;         //bool value for checking row with no data
+
+                for (int col = 0; col < row.size() - 1; col ++)
                 {
-                    if (find(ignores.begin(), ignores.end(), col) == ignores.end())
+                    //if there are targeted columns to be removed
+                    if (ignoredXs.size() != 0)
+                    {
+                        if (find(ignoredXs.begin(), ignoredXs.end(), col) == ignoredXs.end())
+                        {
+                            entry.push_back(row[col]);
+                        }   
+                    }
+                    //simply push all values if there are no targeted columns
+                    else 
                     {
                         entry.push_back(row[col]);
                     }
-                    if (row[col] == "?")
+                    
+                    //a data in a column is blank 
+                    if (row[col] == "?" || row[col] == " ")
                     {
-                        question = true;
+                        unusuable = true;
                     }
                 }
-                if (question == false)
+                //only push if entry contains no blank data
+                if (unusuable == false)
                     new_data.push_back(entry);
             }
 
+            //set y 
             for (int row = 0; row < target.size(); row ++)
             {
                 new_data[row].push_back(target[row][target[row].size()-1]);
             }
 
+            // set the old data vector to new data vector
             target = new_data;
         }
 
-        void updateGProb()
+        void updateGlobalP()
         {
             /* A method for updating X and Y global probability; Target(i)'s freq / data size */
             //updating individual X global Probability
             for (auto &feature : Features)
             {
-                feature.second->overall_prob = double(feature.second->overall_freq) / double(data_size);
+                feature.second->overall_prob = double(feature.second->overall_freq) / double(train_size);
             }
 
             //update individual Y global Probability
             for (auto &y : Y)
             {
-                y.second->overall_prob = double(y.second->overall_freq) / double(data_size);
+                y.second->overall_prob = double(y.second->overall_freq) / double(train_size);
             }
 
         }
 
-        void updateC()
+        void updateConnection()
         {
             //update connection between Feature and Y
             for (auto &con : connections)
             {
                 for (auto &y : Y )
                 {
-                    for (auto &row : data)
+                    for (auto &row : train_data)
                     {
+                        int entry_size = row.size();
+
                         // y exists in the current row of data and the feature exists in that row
-                        if (y.first == row[row.size()-1] && row[Features[con.first]->column] == con.first)
+                        if (y.first == row[entry_size - 1] && row[Features[con.first]->column] == con.first)
                         {
                             // add edge to the connections map and update its freq
                             if (con.second.find(y.first) == con.second.end())
@@ -157,7 +183,7 @@ class NaiveB
                             }
                         }
                         // if feature does not match with the y value in the row
-                        else if (y.first != row[row.size()-1] && row[Features[con.first]->column] == con.first)
+                        else if (y.first != row[entry_size - 1] && row[Features[con.first]->column] == con.first)
                         {
                             //simply add the edge to the connection, Map(X(current))[y(current)] = item
                             if (con.second.find(y.first) == con.second.end())
@@ -206,73 +232,90 @@ class NaiveB
                 y.second->stateP = double(equation); 
             }
             
-            //get best Y
-            string best_y;
-            double best_yp = 0.0;
+            //get the best Y value
+            string bestY;
+            double bestYP = 0.0;
+
+            //loop through Y map and basically find the maximum probability
             for (auto &y : Y)
             {
-                if (best_yp < y.second->stateP)
+                if (bestYP < y.second->stateP)
                 {
-                    best_y = y.first; best_yp = y.second->stateP;
+                    bestY = y.first; bestYP = y.second->stateP;
                 }
             }
 
-            return best_y;    
+            //return the best Y with the best probability
+            return bestY;    
         }
 
         void load(const string filename, vector <vector <string> > &target)
         {
       
-            // load file onto the vector data
-            ifstream file(filename);
-            string line;
+            // load file onto the target vector
+            ifstream file(filename);    // grab file
+            string line;                // a string for holding  current line
 
+            // loop through the file
             while (getline(file, line))
             {
-                //split the line by space
+                //if the current line is not empty
                 if (!line.empty())
                 {
-                    
+                    //split by comma, or period
                     for (int c = 0; c < line.size(); c ++)
                     {
                         if (line[c] == ',' || line[c] == '.') line[c] = ' ';
                     }
                     
-                    vector<string> item;
+                    vector<string> row;    
                     istringstream input(line);
+                    
+                    //split by space
                     for (string s; input >> s;)
                     {
-                        item.push_back(s);
+                        row.push_back(s);  //append individual string onto the vector
                     }
                     //insert the row onto the data
-                    target.push_back(item);
+                    target.push_back(row);
                 }
             }
-
         }   
 
     public:     
-        NaiveB(vector <int> &ignores) 
+        NaiveB(vector <int> &removeXs) 
         {
-            ignored_col = ignores;
-
-            data_size = data.size();
+            ignoredXs = removeXs;            // set ignoredXs vector
+            
         }
 
         void loadTrainD(string traindata)
         {
-            load(traindata, data);
-            split_data(ignored_col, data);
+            load(traindata, train_data);    // load train file
+            clean(train_data);              // clean train data
+            train_size = train_data.size();
         }
 
         void loadTestD(string testdata)
         {
-            load(testdata, test_data);
-            split_data(ignored_col, test_data);
+            load(testdata, test_data);      // load test file
+            clean(test_data);               // clean test data
+            test_size = test_data.size();
         }
 
-
-        void displayData()
+        void displayTrain()
+        {
+            //display the data vector
+            for (auto &entry: train_data)
+            {
+                for (auto &item : entry)
+                {
+                    cout << item << " ";
+                }
+                cout << "\n";
+            }
+        }
+         void displayTest()
         {
             //display the data vector
             for (auto &entry: test_data)
@@ -284,68 +327,46 @@ class NaiveB
                 cout << "\n";
             }
         }
-    
-        void predictTest()
+        
+        void predict()
         {
-            getXY(); updateGProb(); updateC(); 
-            int trues = 0;
+            // call update methods
+            updateXY(); updateGlobalP(); updateConnection(); 
+            int trues = 0;  //count for match Ys
             
             for (auto &row : test_data)
             {
-                string current = predictY(row);
-                if (current == row[row.size()-1])
+                string current = predictY(row);         // get the best Y
+
+                if (current == row[row.size()-1])       // check if the best Y matches with the test Y
                 {
+                    // increment if matches
                     trues += 1;
                 }
             }
-
-            double accuracy = double(trues) / double(test_data.size());
-            cout << "Accuracy of Model: " << accuracy << endl;
-
-        }
-        void displayTable()
-        {
-            /* A method for displaying the three maps; Features, Y, connections */
-            cout << "Displaying X " << endl;
-            for (auto &feature: Features)
-            {
-                cout << "Feature: " << feature.first << " occurences: " << feature.second->overall_freq << " col: " << feature.second->column << " prob: " << feature.second->overall_prob << endl;
-            }
-
-            cout << "\nDisplaying Y " << endl;
-            for (auto &y: Y)
-            {
-                cout << "Y: " << y.first << " occurences: " << y.second->overall_freq << " prob: " << y.second->overall_prob << endl;
-            }
-
-            cout << "\nDisplaying Connections " << endl;
-            for (auto &con : connections)
-            {
-                for (auto &edge : con.second)
-                {
-                    cout << "Feature: " << con.first << " to Y: " << edge.first << " ocurrences: " << edge.second->y_freq << " prob: " << edge.second->y_prob << endl;
-                }
-            }
-
+            // positives / total test size
+            double accuracy = double(trues) / double(test_size);
+            cout << "Accuracy of Model: " << accuracy * 100 << "%" << endl;
         }
 };
 
 int main()
 {
-    vector <int> ignores;
+    //push into the ignores vector for column/Feature that you want to eliminate
+    //this is merely for data cleaning/cleansing
+    vector <int> removeXs;
+    removeXs.push_back(2);
+    removeXs.push_back(4);
+    removeXs.push_back(10);
+    removeXs.push_back(11);
+    removeXs.push_back(12);
     
-    ignores.push_back(2);
-    ignores.push_back(4);
-    ignores.push_back(10);
-    ignores.push_back(11);
-    ignores.push_back(12);
-    
-    NaiveB classifier = NaiveB(ignores);
+    NaiveB classifier = NaiveB(removeXs);
 
     classifier.loadTrainD("adult.data");
     classifier.loadTestD("adult.test");
 
-    classifier.predictTest();
+    classifier.predict();
    
     
 }
