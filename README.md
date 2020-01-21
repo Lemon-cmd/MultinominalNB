@@ -13,7 +13,7 @@ It is up to you to clean your data. There are many ways people separate differen
         
 # How to use the NB #    
   - Simply run the bash script to build and run  
-  - If you want to target a different trainning and test set, simply go into the main function and change the loadTrainD() and loadTestD() methods to target different files.   
+  - If you want to target a different trainning and test set, simply go into the main function and change the ***loadTrainD()*** and ***loadTestD()*** methods to target different files.   
   - If you want to modify the code for your own needs, go ahead.
         
 ### Have fun! ###
