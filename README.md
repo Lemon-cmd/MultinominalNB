@@ -4,7 +4,7 @@
 
 For using a different dataset, please consider using the **last column in the data as the test feature or Y**. If not, then you will have to change up the code.       
 
-# Dataset Tips #.     
+# Dataset Tips#     
 It is up to you to clean your data. There are many ways people separate different columns in their dataset. Please simply update the load method to do the splitting based on your **targeted dataset** 
 
 # Please don't use features with only 1 and 0! #.  
