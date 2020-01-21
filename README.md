@@ -8,4 +8,9 @@ For using a different dataset, please consider using the **last column in the da
 It is up to you to clean your data. There are many ways people separate different columns in their dataset. Please simply update the load method to do the splitting based on your **targeted dataset** 
 
 # Please don't use features with only 1 and 0! #             
-  - This is not a multinominal NB classifier. It will be up on a different repository!
+  - This is not a multinominal NB classifier. It will be up on a different repository!     
+  - This is not a Guassian NB classifier. It will be up on a different repository !      
+        
+        
+        
+### Have fun! ###
