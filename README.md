@@ -1,4 +1,4 @@
-# Naive Bayes Classifier C++.   
+# Naive Bayes Classifier C++ #          
 
 ### A C++ Implementation of Naive Bayes Classifier. Please take a look at the given dataset ! ###             
 
