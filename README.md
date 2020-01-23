@@ -6,7 +6,7 @@ For using a different dataset, please consider using the **last column in the da
 
 # How does it works?
 
-The Classifier estimates the conditional probability of a particular feature given a class as the relative frequency of X(feature) belonging to class(c). The variation takes into account the number of occurrences of term X in training documents from class (c),including multiple occurrences.
+The Classifier estimates the conditional probability of a particular feature given a class as the relative frequency of **X(feature)** belonging to ***class(c)***. The variation takes into account the number of occurrences of term **x** in training documents from ***class (c)***, including multiple occurrences.
 
 # Dataset Tips      
 It is up to you to clean your data. There are many ways people separate different columns in their dataset. Please simply update the load method to do the splitting based on your **targeted dataset**.  
